@@ -1,9 +1,9 @@
-use std::string::String;
 use std::thread;
 use std::time::Duration;
-use sysinfo::{ProcessExt, SystemExt};
+use sysinfo::{ProcessExt, ProcessStatus, SystemExt};
 
-const LOCKSCREEN_PROCESS_NAMES: &[&str; 6] = &[
+#[allow(dead_code)]
+const LOCKSCREEN_PROCESS_NAMES_LINUX: &[&str] = &[
     "i3lock",
     "xlock",
     "xsecurelock",
@@ -11,6 +11,15 @@ const LOCKSCREEN_PROCESS_NAMES: &[&str; 6] = &[
     "slock",
     "kscreenlocker",
 ];
+
+#[allow(dead_code)]
+const LOCKSCREEN_PROCESS_NAMES_WINDOWS: &[&str] = &["LockApp.exe"];
+
+#[cfg(target_os = "windows")]
+const LOCKSCREEN_PROCESS_NAMES: &[&str] = LOCKSCREEN_PROCESS_NAMES_WINDOWS;
+
+#[cfg(target_os = "linux")]
+const LOCKSCREEN_PROCESS_NAMES: &[&str] = LOCKSCREEN_PROCESS_NAMES_LINUX;
 
 fn main() {
     let mut system = sysinfo::System::new_all();
@@ -20,11 +29,18 @@ fn main() {
 
         let mut found_lock = false;
         for (_, proc_) in system.get_processes() {
-            if LOCKSCREEN_PROCESS_NAMES
-                .iter()
-                .any(move |x: &&str| String::from(proc_.name()) == String::from(*x))
-            {
+            let proc_name = proc_.name();
+            let proc_status = proc_.status();
+            let is_lockscreen_process = |x: &&str| {
+                proc_name == *x
+                    && match proc_status {
+                        ProcessStatus::Sleep | ProcessStatus::Run | ProcessStatus::Idle => true,
+                        _ => false,
+                    }
+            };
+            if LOCKSCREEN_PROCESS_NAMES.iter().any(is_lockscreen_process) {
                 found_lock = true;
+                println!("{:?} is {:?}", proc_name, proc_.status());
                 break;
             }
         }
