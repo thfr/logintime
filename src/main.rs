@@ -17,9 +17,13 @@ const LOCKSCREEN_PROCESS_NAMES_WINDOWS: &[&str] = &["LockApp.exe"];
 
 #[cfg(target_os = "windows")]
 const LOCKSCREEN_PROCESS_NAMES: &[&str] = LOCKSCREEN_PROCESS_NAMES_WINDOWS;
+#[cfg(target_os = "windows")]
+const LOCKSCREEN_PROCESS_STATUSES: &[&ProcessStatus] = &[&ProcessStatus::Run];
 
 #[cfg(target_os = "linux")]
 const LOCKSCREEN_PROCESS_NAMES: &[&str] = LOCKSCREEN_PROCESS_NAMES_LINUX;
+#[cfg(target_os = "linux")]
+const LOCKSCREEN_PROCESS_STATUSES: &[ProcessStatus] = [&ProcessStatus::Sleep, &ProcessStatus::Run, &ProcessStatus::Idle];
 
 fn main() {
     let mut system = sysinfo::System::new_all();
@@ -32,11 +36,7 @@ fn main() {
             let proc_name = proc_.name();
             let proc_status = proc_.status();
             let is_lockscreen_process = |x: &&str| {
-                proc_name == *x
-                    && match proc_status {
-                        ProcessStatus::Sleep | ProcessStatus::Run | ProcessStatus::Idle => true,
-                        _ => false,
-                    }
+                proc_name == *x && LOCKSCREEN_PROCESS_STATUSES.iter().any(|x: &&ProcessStatus| proc_status.to_string() == (**x).to_string())
             };
             if LOCKSCREEN_PROCESS_NAMES.iter().any(is_lockscreen_process) {
                 found_lock = true;
